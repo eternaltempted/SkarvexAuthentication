@@ -114,9 +114,9 @@ You are free to use, modify, distribute, and contribute to the project in accord
 
 ## Author
 
-Developed and maintained by eternalweakness.
+Developed and maintained by nobodyinvited.
 
-GitHub: https://github.com/eternalweakness
+GitHub: https://github.com/nobodyinvited
 
 ## Contributing
 
