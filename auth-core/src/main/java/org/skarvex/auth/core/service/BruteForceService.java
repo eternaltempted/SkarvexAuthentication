@@ -7,7 +7,7 @@ import org.skarvex.auth.core.repository.RestrictedIpRepository;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.CompletableFuture;
+import java.util.Optional;
 
 public class BruteForceService {
 
@@ -31,50 +31,51 @@ public class BruteForceService {
         this.ipRepository = ipRepository;
     }
 
-    public CompletableFuture<Boolean> isBlocked(String ip) {
-        Instant blockedUntil = blockedCache.getIfPresent(ip);
+    public boolean isBlocked(String ip) {
         Instant now = Instant.now();
+        Instant blockedUntil = blockedCache.getIfPresent(ip);
 
         if (blockedUntil != null) {
             if (blockedUntil.isAfter(now)) {
-                return CompletableFuture.completedFuture(true);
+                return true;
             }
             blockedCache.invalidate(ip);
         }
 
-        return ipRepository.findByIp(ip).thenApply(restrictedIp -> {
-            if (restrictedIp.isEmpty()) return false;
+        Optional<RestrictedIp> restrictedIpOptional = ipRepository.findByIp(ip);
+        if (restrictedIpOptional.isEmpty()) return false;
 
-            if (restrictedIp.get().blockedUntil().isAfter(now)) {
-                blockedCache.put(ip, restrictedIp.get().blockedUntil());
-                return true;
-            }
+        RestrictedIp restrictedIp = restrictedIpOptional.get();
 
-            unblock(ip);
-            return false;
-        });
+        if (restrictedIp.blockedUntil().isAfter(now)) {
+            blockedCache.put(ip, restrictedIp.blockedUntil());
+            return true;
+        }
+
+        unblock(ip);
+        return false;
     }
 
-    public CompletableFuture<Void> block(String ip) {
+    public void block(String ip) {
         RestrictedIp restrictedIp = new RestrictedIp(
                 ip,
                 Instant.now().plus(BLOCK_DURATION)
         );
 
-        return ipRepository.block(restrictedIp).thenRun(() -> {
-            blockedCache.put(restrictedIp.ip(), restrictedIp.blockedUntil());
-            failedAttemptsCache.invalidate(restrictedIp.ip());
-        });
+        ipRepository.block(restrictedIp);
+
+        blockedCache.put(restrictedIp.ip(), restrictedIp.blockedUntil());
+        failedAttemptsCache.invalidate(restrictedIp.ip());
     }
-    public CompletableFuture<Void> unblock(String ip) {
-        return ipRepository.unblock(ip);
+
+    public void unblock(String ip) {
+        ipRepository.unblock(ip);
+        blockedCache.invalidate(ip);
     }
 
     public int increment(String ip) {
         return failedAttemptsCache.asMap()
-                .compute(ip, (key, attempts)
-                -> attempts == null ? 1 : ++attempts
-        );
+                .merge(ip, 1, Integer::sum);
     }
     public void reset(String ip) {
         failedAttemptsCache.invalidate(ip);
@@ -84,10 +85,20 @@ public class BruteForceService {
         return MAX_ATTEMPTS;
     }
 
-    public Duration getRemainingTime(String ip) {
-        return Duration.between(
-                Instant.now(),
-                blockedCache.getIfPresent(ip)
-        );
+    public Optional<Duration> getRemainingTime(String ip) {
+
+        if(!isBlocked(ip)) return Optional.empty();
+
+        Instant blockedUntil = blockedCache.getIfPresent(ip);
+        if (blockedUntil == null) return Optional.empty();
+
+        Duration remaining = Duration.between(Instant.now(), blockedUntil);
+        if (remaining.isNegative() || remaining.isZero()) {
+            blockedCache.invalidate(ip);
+            return Optional.empty();
+        }
+
+        return remaining.isNegative() || remaining.isZero() ? Optional.empty() : Optional.of(remaining);
     }
+
 }

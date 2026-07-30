@@ -1,6 +1,7 @@
 package org.skarvex.auth.velocity;
 
 import com.google.inject.Inject;
+import com.velocitypowered.api.event.Continuation;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
@@ -24,8 +25,8 @@ import org.skarvex.auth.velocity.commands.LogoutCommand;
 import org.skarvex.auth.velocity.commands.RegisterCommand;
 import org.skarvex.auth.velocity.commands.ResetPasswordCommand;
 import org.skarvex.auth.velocity.database.DatabaseManager;
-import org.skarvex.auth.velocity.database.JdbcRestrictedIpRepository;
-import org.skarvex.auth.velocity.database.JdbcUserRepository;
+import org.skarvex.auth.core.repository.jdbc.JdbcRestrictedIpRepository;
+import org.skarvex.auth.core.repository.jdbc.JdbcUserRepository;
 import org.skarvex.auth.velocity.manager.ConfigurationManager;
 import org.skarvex.auth.velocity.scheduler.LoginReminderScheduler;
 import org.skarvex.auth.velocity.scheduler.LoginTimeoutScheduler;
@@ -35,11 +36,16 @@ import org.slf4j.Logger;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AuthVelocity {
 
-    @Inject private Logger logger;
-    @Inject private ProxyServer proxy;
+    @Inject
+    private Logger logger;
+    @Inject
+    private ProxyServer proxy;
 
     @Inject
     @DataDirectory
@@ -60,8 +66,11 @@ public class AuthVelocity {
     private LoginTimeoutScheduler timeoutScheduler;
     private LoginReminderScheduler reminderScheduler;
 
+    private ExecutorService asyncExecutor;
+
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
+        this.asyncExecutor = Executors.newCachedThreadPool();
         loadConfiguration();
         setupDatabase();
         setupServices();
@@ -83,7 +92,7 @@ public class AuthVelocity {
                         .getServerInfo()
                         .getName();
 
-        if (target.equals("auth")) {
+        if (target.equals(config.getString("servers.initial-server"))) {
             return;
         }
 
@@ -93,42 +102,44 @@ public class AuthVelocity {
     }
 
     @Subscribe
-    public void onJoin(PlayerChooseInitialServerEvent event) {
-
+    public void onJoin(PlayerChooseInitialServerEvent event, Continuation continuation) {
         Player customer = event.getPlayer();
         UUID uuid = customer.getUniqueId();
         String incomingIp = customer.getRemoteAddress().getAddress().getHostAddress();
 
-        boolean autoLogin = authService.tryAutoLogin(uuid, incomingIp);
+        CompletableFuture.supplyAsync(() -> authService.tryAutoLogin(uuid, incomingIp), asyncExecutor)
+                .thenCompose(autoLogin -> {
+                    if (autoLogin) {
+                        proxy.getServer(config.getString("servers.forward-server")).ifPresent(event::setInitialServer);
+                        return CompletableFuture.completedFuture(null);
+                    }
 
-        if (autoLogin) {
-            proxy.getServer("lobby").ifPresent(event::setInitialServer);
-            return;
-        }
+                    return CompletableFuture.supplyAsync(() -> bruteForceService.getRemainingTime(incomingIp), asyncExecutor)
+                            .thenAccept(remainingTimeOpt -> {
+                                if (remainingTimeOpt.isPresent()) {
+                                    customer.disconnect(
+                                            Messages.parse(config.getString("messages.login.kick-screen")
+                                                    .replace("<time>", TimeUtil.formatDuration(remainingTimeOpt.get())))
+                                    );
+                                    return;
+                                }
 
-        bruteForceService.isBlocked(incomingIp).thenAccept(isBlocked -> {
-            if (!isBlocked) return;
+                                loginTimeoutService.start(uuid, Duration.ofSeconds(config.getInt("login.timeout")));
+                                timeoutScheduler.startTimeout(uuid);
 
-            Duration time = bruteForceService.getRemainingTime(incomingIp);
-            customer.disconnect(
-                    Messages.parse(config.getString("messages.login.kick-screen")
-                            .replace("<time>", TimeUtil.formatDuration(time))
-                    )
-            );
-        });
-
-        // Running the timeout service (default = 60 seconds)
-        loginTimeoutService.start(uuid, Duration.ofSeconds(config.getInt("login.timeout")));
-        timeoutScheduler.startTimeout(uuid);
-
-        if (authService.isAuthenticated(uuid)) {
-            return;
-        }
-
-        reminderScheduler.start(uuid);
-
-        proxy.getServer("auth")
-                .ifPresent(event::setInitialServer);
+                                if (!authService.isAuthenticated(uuid)) {
+                                    reminderScheduler.start(uuid);
+                                    proxy.getServer(config.getString("servers.initial-server"))
+                                            .ifPresent(event::setInitialServer);
+                                }
+                            });
+                })
+                .whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        logger.error("Error during join process", throwable);
+                    }
+                    continuation.resume();
+                });
     }
 
     @Subscribe
@@ -170,8 +181,8 @@ public class AuthVelocity {
     private void setupServices() {
         this.sessions = new SessionService();
         this.hasher = new BCryptPasswordHasher();
-        this.users = new JdbcUserRepository(database);
-        this.restrictedIps = new JdbcRestrictedIpRepository(database);
+        this.users = new JdbcUserRepository(database.getDataSource());
+        this.restrictedIps = new JdbcRestrictedIpRepository(database.getDataSource());
         this.loginTimeoutService = new LoginTimeoutService();
         this.authService = new AuthService(users, hasher, sessions);
         this.bruteForceService = new BruteForceService(restrictedIps);
@@ -200,7 +211,8 @@ public class AuthVelocity {
                         config,
                         authService,
                         bruteForceService,
-                        loginTimeoutService
+                        loginTimeoutService,
+                        asyncExecutor
                 )
         );
 

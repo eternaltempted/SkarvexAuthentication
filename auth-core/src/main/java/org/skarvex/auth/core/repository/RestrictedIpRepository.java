@@ -7,9 +7,9 @@ import java.util.concurrent.CompletableFuture;
 
 public interface RestrictedIpRepository {
 
-    CompletableFuture<Void> block(RestrictedIp restrictedIp);
+    void block(RestrictedIp restrictedIp);
 
-    CompletableFuture<Optional<RestrictedIp>> findByIp(String ip);
+    Optional<RestrictedIp> findByIp(String ip);
 
-    CompletableFuture<Void> unblock(String ip);
+    void unblock(String ip);
 }

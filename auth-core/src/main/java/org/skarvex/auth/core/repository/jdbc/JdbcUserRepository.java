@@ -1,9 +1,9 @@
-package org.skarvex.auth.velocity.database;
+package org.skarvex.auth.core.repository.jdbc;
 
 import org.skarvex.auth.core.model.User;
 import org.skarvex.auth.core.repository.UserRepository;
 
-import java.sql.Connection;
+import javax.sql.DataSource;import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,9 +13,9 @@ import java.util.UUID;
 public class JdbcUserRepository
         implements UserRepository {
 
-    private final DatabaseManager db;
-    public JdbcUserRepository(DatabaseManager db) {
-        this.db = db;
+    private final DataSource dataSource;
+    public JdbcUserRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     @Override
@@ -23,7 +23,7 @@ public class JdbcUserRepository
 
         String sql = "SELECT * FROM users WHERE uuid = ?";
 
-        try (Connection connection = db.getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)
         ) {
             statement.setString(1, uuid.toString());
@@ -52,7 +52,7 @@ public class JdbcUserRepository
     public void save(User user) {
         String sql = "INSERT INTO users(uuid, password_hash, registration_ip, last_login_ip, remember_session) VALUES(?,?,?,?,?)";
 
-        try (Connection connection = db.getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)
         ) {
             statement.setString(1, user.id().toString());
@@ -72,7 +72,7 @@ public class JdbcUserRepository
     public boolean updatePassword(UUID uuid, String passwordHash) {
         String sql = "UPDATE users SET password_hash = ? WHERE uuid = ?";
 
-        try (Connection connection = db.getConnection();
+        try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, passwordHash);
@@ -89,7 +89,7 @@ public class JdbcUserRepository
 
         String sql = "UPDATE users SET last_login_ip = ? WHERE uuid = ?";
 
-        try (Connection connection = db.getConnection();
+        try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, ip);
@@ -106,7 +106,7 @@ public class JdbcUserRepository
 
         String sql = "UPDATE users SET remember_session = ? WHERE uuid = ?";
 
-        try (Connection connection = db.getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setBoolean(1, rememberSession);

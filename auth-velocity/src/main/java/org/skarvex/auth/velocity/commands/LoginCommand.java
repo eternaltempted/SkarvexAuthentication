@@ -12,6 +12,8 @@ import org.skarvex.auth.velocity.utils.Messages;
 
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 public class LoginCommand implements SimpleCommand {
 
@@ -20,17 +22,20 @@ public class LoginCommand implements SimpleCommand {
     private final AuthService authService;
     private final BruteForceService bruteForceService;
     private final LoginTimeoutService loginTimeoutService;
+    private final ExecutorService asyncExecutor;
 
     public LoginCommand(ProxyServer server,
                         ConfigurationManager config,
                         AuthService authService,
                         BruteForceService bruteForceService,
-                        LoginTimeoutService loginTimeoutService) {
+                        LoginTimeoutService loginTimeoutService,
+                        ExecutorService asyncExecutor) {
         this.server = server;
         this.config = config;
         this.authService = authService;
         this.bruteForceService = bruteForceService;
         this.loginTimeoutService = loginTimeoutService;
+        this.asyncExecutor = asyncExecutor;
     }
 
     @Override
@@ -63,7 +68,7 @@ public class LoginCommand implements SimpleCommand {
 
         String password = arguments[0];
 
-        if (password.length() < 4) {
+        if (password.length() < config.getInt("register.min-password-chars")) {
             player.sendMessage(Messages.parse(
                     config.getString("messages.insufficient-characters")
             ));
@@ -75,14 +80,14 @@ public class LoginCommand implements SimpleCommand {
             int attempts = bruteForceService.increment(ip);
 
             if (attempts >= bruteForceService.getMaxAttempts()) {
-                bruteForceService.block(ip).thenRun(() -> {
-
-                    Duration time = bruteForceService.getRemainingTime(ip);
-                    player.disconnect(
-                            Messages.parse(config.getString("messages.login.kick-screen")
-                                    .replace("<time>", TimeUtil.formatDuration(time))
-                            )
-                    );
+                CompletableFuture.runAsync(() -> bruteForceService.block(ip), asyncExecutor).thenRun(() -> {
+                    bruteForceService.getRemainingTime(ip).ifPresent(duration -> {
+                        player.disconnect(
+                                Messages.parse(config.getString("messages.login.kick-screen")
+                                        .replace("<time>", TimeUtil.formatDuration(duration))
+                                )
+                        );
+                    });
                 });
             }
 

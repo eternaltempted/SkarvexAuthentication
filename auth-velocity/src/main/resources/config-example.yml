@@ -1,11 +1,27 @@
+# Connecting to your database to store users' data
 database:
   url: ""
   username: "root"
   password: "root"
 
+# Server names configured in the velocity.toml
+servers:
+  initial-server: "auth"
+  forward-server: "lobby"
+
 login:
+  # How many attempts the player uses to log in.
   attempts: 5
+  # The duration of time the player is allowed to be in the server until the password is entered.
   timeout: 60
+
+register:
+  # Minimum characters of the password (recommended: 4)
+  min-password-chars: 4
+
+# Messages section (using MiniMessage formatting)
+# Be aware that using deprecated code colors affect the way the messages are printed
+# More information: https://docs.papermc.io/adventure/minimessage/
 
 messages:
   already-registered: "<white>You are already registered!"

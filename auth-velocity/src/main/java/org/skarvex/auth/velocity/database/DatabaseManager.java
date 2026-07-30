@@ -44,6 +44,9 @@ public class DatabaseManager {
                     registration_ip VARCHAR(255) NOT NULL,
                     last_login_ip VARCHAR(255) NOT NULL,
                     auto_login BOOLEAN NOT NULL DEFAULT TRUE
+                    email VARCHAR(255) DEFAULT NULL,
+                    is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                    UNIQUE KEY uk_email (email)
                 )
             """);
 

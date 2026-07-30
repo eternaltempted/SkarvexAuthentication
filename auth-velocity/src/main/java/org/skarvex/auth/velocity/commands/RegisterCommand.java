@@ -50,7 +50,7 @@ public class RegisterCommand implements SimpleCommand {
 
         String password = arguments[0];
 
-        if (password.length() < 4) {
+        if (password.length() < config.getInt("register.min-password-chars")) {
             player.sendMessage(Messages.parse(
                     config.getString("messages.insufficient-characters")
             ));
