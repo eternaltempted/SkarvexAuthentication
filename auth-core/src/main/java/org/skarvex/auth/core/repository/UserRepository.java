@@ -18,4 +18,8 @@ public interface UserRepository {
 
     void setAutoLogin(UUID uuid, boolean enabled);
 
+    void updateEmail(UUID uuid, String email);
+
+    boolean isEmailLinked(String email);
+
 }
