@@ -1,102 +1,164 @@
 package org.skarvex.auth.core.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.skarvex.auth.core.model.EmailBindResult;
+import org.skarvex.auth.core.model.EmailTemplate;
+import org.skarvex.auth.core.model.PendingEmailRegistration;
 import org.skarvex.auth.core.model.User;
 import org.skarvex.auth.core.repository.UserRepository;
 import org.skarvex.auth.core.security.PasswordHasher;
 
+import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class AuthService {
 
-    private final UserRepository users;
-    private final PasswordHasher hasher;
-    private final SessionService sessions;
+    private final UserRepository userRepository;
+    private final PasswordHasher passwordHasher;
+    private final SessionService sessionService;
+    private final EmailService emailService;
+
+    private final Cache<UUID, PendingEmailRegistration> pendingEmailCache;
 
     public AuthService(
             UserRepository users,
             PasswordHasher hasher,
-            SessionService sessions
+            SessionService sessions,
+            EmailService emailService
     ) {
-        this.users = users;
-        this.hasher = hasher;
-        this.sessions = sessions;
+        this.userRepository = users;
+        this.passwordHasher = hasher;
+        this.sessionService = sessions;
+        this.emailService = emailService;
+        this.pendingEmailCache = Caffeine.newBuilder()
+                .expireAfterWrite(Duration.ofMinutes(10))
+                .maximumSize(10_000)
+                .build();
     }
 
     public boolean register(UUID uuid, String password, String registrationIp, String loginIp, boolean rememberSession) {
-        if (users.findById(uuid).isPresent()) {
+        if (userRepository.findById(uuid).isPresent()) {
             return false;
         }
 
-        users.save(
+        userRepository.save(
                 new User(uuid,
-                        hasher.hash(password),
+                        passwordHasher.hash(password),
                         registrationIp,
                         loginIp,
-                        rememberSession
+                        rememberSession,
+                        null,
+                        false
                 )
         );
 
-        sessions.login(uuid);
+        sessionService.login(uuid);
 
         return true;
     }
     public boolean authenticate(UUID uuid, String password, String incomingIp) {
-        return users.findById(uuid)
+        return userRepository.findById(uuid)
                 .filter(user ->
-                        hasher.verify(password, user.passwordHash())
+                        passwordHasher.verify(password, user.passwordHash())
         ).map(user -> {
-            sessions.login(uuid);
+            sessionService.login(uuid);
 
-            users.setAutoLogin(uuid, true);
-            users.updateLastLoginIp(uuid, incomingIp);
+            userRepository.setAutoLogin(uuid, true);
+            userRepository.updateLastLoginIp(uuid, incomingIp);
             return true;
                 }).orElse(false);
     }
 
     public void logout(UUID uuid) {
-        sessions.logout(uuid);
+        sessionService.logout(uuid);
     }
-
-    /**
-     * Cancels the user's active session using the logout() method, and also disables automatic session for a specific UUID.
-     * @param uuid Server user UUID
-     */
     public void revokeSession(UUID uuid) {
-        sessions.logout(uuid);
-        users.setAutoLogin(uuid, false);
+        sessionService.logout(uuid);
+        userRepository.setAutoLogin(uuid, false);
     }
 
     public boolean isRegistered(UUID uuid) {
-        return users.findById(uuid).isPresent();
+        return userRepository.findById(uuid).isPresent();
     }
     public boolean isAuthenticated(UUID uuid) {
-        return sessions.isAuthenticated(uuid);
+        return sessionService.isAuthenticated(uuid);
     }
 
     public boolean comparePassword(UUID uuid, String password) {
-        return users.findById(uuid)
+        return userRepository.findById(uuid)
                 .map(user ->
-                        hasher.verify(password, user.passwordHash())
+                        passwordHasher.verify(password, user.passwordHash())
                 )
                 .orElse(false);
     }
     public boolean updatePassword(UUID uuid, String newPassword) {
-        return users.updatePassword(
+        return userRepository.updatePassword(
                 uuid,
-                hasher.hash(newPassword)
+                passwordHasher.hash(newPassword)
         );
     }
 
     public boolean tryAutoLogin(UUID uuid, String incomingIp) {
-        return users.findById(uuid).filter(User::autoLogin)
+        return userRepository.findById(uuid).filter(User::autoLogin)
                 .filter(user -> {
                     boolean trustedSession = incomingIp.equals(user.lastLoginIp());
 
-                    if (!trustedSession) users.setAutoLogin(uuid, false);
+                    if (!trustedSession) userRepository.setAutoLogin(uuid, false);
                     return trustedSession;
                 }).map(user -> {
-                    sessions.login(uuid);
+                    sessionService.login(uuid);
                     return true;
         }).orElse(false);
+    }
+
+    public Optional<String> getEmail(UUID uuid) {
+        return userRepository.findById(uuid)
+                .map(User::email)
+                .filter(email -> !email.isBlank());
+    }
+
+    public EmailBindResult requestEmailBinding(UUID uuid, String email, EmailTemplate template) {
+        Optional<User> user = userRepository.findById(uuid);
+
+        if (user.isPresent() && user.get().isEmailVerified()) return EmailBindResult.ALREADY_BOUND;
+        if (pendingEmailCache.getIfPresent(uuid) != null) return EmailBindResult.AWAITING_CONFIRMATION;
+        if (userRepository.isEmailLinked(email)) return EmailBindResult.ALREADY_BOUND;
+
+        String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000));
+        pendingEmailCache.put(uuid, new PendingEmailRegistration(email, code));
+
+        emailService.sendConfirmationCode(uuid, code, template);
+        return EmailBindResult.SUCCESS;
+    }
+    public EmailBindResult confirmEmailBinding(UUID uuid, String code) {
+        if (code == null) return EmailBindResult.INVALID_CODE;
+
+        PendingEmailRegistration pending = pendingEmailCache.getIfPresent(uuid);
+        if (pending == null) return EmailBindResult.NO_PENDING_REQUEST;
+
+        if (!pending.code().trim().equals(code)) {
+            return EmailBindResult.INVALID_CODE;
+        }
+
+        userRepository.updateEmail(uuid, pending.email());
+        pendingEmailCache.invalidate(uuid);
+        emailService.confirmEmail(uuid);
+
+        return EmailBindResult.SUCCESS;
+    }
+    public EmailBindResult unbindEmail(UUID uuid) {
+        Optional<User> userOpt = userRepository.findById(uuid);
+
+        if (userOpt.isEmpty() || userOpt.get().email() == null || userOpt.get().email().isBlank()) {
+            return EmailBindResult.NOT_BOUND;
+        }
+
+        userRepository.updateEmail(uuid, null);
+        emailService.clearPendingStatus(uuid);
+
+        return EmailBindResult.SUCCESS;
     }
 }
