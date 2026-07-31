@@ -11,23 +11,19 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import org.skarvex.auth.core.model.SmtpConfig;
 import org.skarvex.auth.core.repository.RestrictedIpRepository;
 import org.skarvex.auth.core.repository.UserRepository;
 import org.skarvex.auth.core.security.BCryptPasswordHasher;
 import org.skarvex.auth.core.security.PasswordHasher;
-import org.skarvex.auth.core.service.AuthService;
-import org.skarvex.auth.core.service.BruteForceService;
-import org.skarvex.auth.core.service.LoginTimeoutService;
-import org.skarvex.auth.core.service.SessionService;
+import org.skarvex.auth.core.service.*;
 import org.skarvex.auth.core.util.TimeUtil;
-import org.skarvex.auth.velocity.commands.LoginCommand;
-import org.skarvex.auth.velocity.commands.LogoutCommand;
-import org.skarvex.auth.velocity.commands.RegisterCommand;
-import org.skarvex.auth.velocity.commands.ResetPasswordCommand;
+import org.skarvex.auth.velocity.commands.*;
 import org.skarvex.auth.velocity.database.DatabaseManager;
 import org.skarvex.auth.core.repository.jdbc.JdbcRestrictedIpRepository;
 import org.skarvex.auth.core.repository.jdbc.JdbcUserRepository;
 import org.skarvex.auth.velocity.manager.ConfigurationManager;
+import org.skarvex.auth.velocity.manager.TemplateManager;
 import org.skarvex.auth.velocity.scheduler.LoginReminderScheduler;
 import org.skarvex.auth.velocity.scheduler.LoginTimeoutScheduler;
 import org.skarvex.auth.velocity.utils.Messages;
@@ -59,6 +55,7 @@ public class AuthVelocity {
     private RestrictedIpRepository restrictedIps;
     private DatabaseManager database;
     private AuthService authService;
+    private EmailService emailService;
 
     private LoginTimeoutService loginTimeoutService;
     private BruteForceService bruteForceService;
@@ -146,6 +143,10 @@ public class AuthVelocity {
     public void onProxyShutdown(
             ProxyShutdownEvent event
     ) {
+        if (asyncExecutor != null) {
+            asyncExecutor.shutdown();
+        }
+
         if (database != null) {
             database.disconnect();
         }
@@ -184,7 +185,13 @@ public class AuthVelocity {
         this.users = new JdbcUserRepository(database.getDataSource());
         this.restrictedIps = new JdbcRestrictedIpRepository(database.getDataSource());
         this.loginTimeoutService = new LoginTimeoutService();
-        this.authService = new AuthService(users, hasher, sessions);
+        this.emailService = new EmailService(new SmtpConfig(
+                config.getString("smtp.host"),
+                config.getInt("smtp.port"),
+                config.getString("smtp.username"),
+                config.getString("smtp.password")
+        ));
+        this.authService = new AuthService(users, hasher, sessions, emailService);
         this.bruteForceService = new BruteForceService(restrictedIps);
     }
 
@@ -235,6 +242,17 @@ public class AuthVelocity {
                         proxy,
                         config,
                         authService
+                )
+        );
+
+        proxy.getCommandManager().register(
+                proxy.getCommandManager()
+                        .metaBuilder("email")
+                        .build(),
+                new EmailSubCommand(config,
+                        authService,
+                        new TemplateManager(config),
+                        asyncExecutor
                 )
         );
     }
