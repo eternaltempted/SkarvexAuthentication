@@ -1,0 +1,102 @@
+# Connecting to your database to store users' data
+database:
+  url: ""
+  username: "root"
+  password: "root"
+
+# SMTP connection
+smtp:
+  host: "smtp.gmail.com"
+  port: 587
+  username: "example@gmail.com"
+  password: "app-password"
+
+email-templates:
+  binding:
+    from: "Example <admin@localhost>"
+    subject: "Confirmation of mail binding"
+    text: |
+      Hi there!
+      
+      Your code for linking mail to account: <code>
+      If it wasn't you, just ignore this email.
+
+  recovery:
+    from: "Example <admin@localhost>"
+    subject: "Password recovery"
+    text: |
+      Hi there!
+
+      Your code for password recovery: <code>
+      The code is valid for 10 minutes.
+
+# Server names configured in the velocity.toml
+servers:
+  initial-server: "auth"
+  forward-server: "lobby"
+
+login:
+  # How many attempts the player uses to log in.
+  attempts: 5
+  # The duration of time the player is allowed to be in the server until the password is entered.
+  timeout: 60
+
+register:
+  # Minimum characters of the password (recommended: 4)
+  min-password-chars: 4
+
+# Messages section (using MiniMessage formatting)
+# Be aware that using deprecated code colors affect the way the messages are printed
+# More information: https://docs.papermc.io/adventure/minimessage/
+
+messages:
+  already-registered: "<white>You are already registered!"
+  already-logged: "<white>You are already logged in!"
+  not-registered: "<white>You are not registered yet. Please use <dark_purple>/register [password]</dark_purple>"
+  not-logged: "<white>You are not logged in yet. Please use <dark_purple>/login [password]</dark_purple>"
+  insufficient-characters: "<white>Please use a minimum of <dark_purple>4 characters</dark_purple>"
+  wrong-credentials: "<white>You entered the wrong password. Please try again!"
+  timeout: "<red>Authentication timed out. Please try again.</red>"
+  not-a-player: "<red>This command must be invoked by a player.</red>"
+
+  register:
+    usage: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Register - <dark_purple>/register [password]</dark_purple>"
+    success: "<green>You have successfully registered!"
+
+  login:
+    usage: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Login - <dark_purple>/login [password]</dark_purple>"
+    success: "<green>You have successfully logged in!"
+    kick-screen: "
+    <red>Access denied.</red>
+    \n<red>Too many failed login attempts.</red>
+    \n\n<red>Please try again in <time>.</red>
+    "
+
+  logout:
+    usage: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Logout - <dark_purple>/logout</dark_purple>"
+    kick-screen: "<red>You have been logged out by own choice. \nPlease reconnect the server if it was made by the mistake."
+
+  changepass:
+    usage: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Change password - <dark_purple>/changepass [old password] [new password]</dark_purple>"
+    kick-screen: "<green>Your password has been changed successfully. \n\n<white>Please rejoin the server and log in using your new password."
+
+  email:
+    info:
+      usage: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <gray>Usage: <white>/email info"
+      success: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Your account is linked to the email <gold><email></gold>."
+      failed: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Your account is not linked to an email. To secure your account and enable password recovery, use <gray>/email link <email></gray></white>."
+    link:
+      usage: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <gray>Usage: <white>/email link <email>"
+      success: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>A confirmation code has been sent to email <gold><email></gold>. \nPlease check out your email inbox and enter the code using <gray>/email confirm <code></gray> to finish binding."
+      wrong-email: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>The email you entered is not valid, please try again!"
+      already-bound: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>This account already has an email linked, or this email address is already taken.</white>"
+      already-sent: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>A confirmation code has already been sent to your email. Please check your inbox or wait before requesting a new one!</white>"
+    confirm:
+      usage: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <gray>Usage: <white>/email confirm <code>"
+      success: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Congratulations! The email has been successfully linked to your account and can be used to recover your password."
+      invalid-code: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>The code you entered doesn't match the code sent to you.</white>"
+      no-pending-request: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>You don't have any pending confirmation requests. Use <gray>/email link <email></gray> first!</white>"
+    unlink:
+      usage: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <gray>Usage: <white>/email unlink"
+      success: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Your account is no longer secured with an email. Be aware that this may affect your security.</white>"
+      not-bound: "<dark_purple><bold>AUTH</bold></dark_purple> <dark_gray><bold>:: </bold></dark_gray> <white>Your account is not linked to an email. To secure your account and enable password recovery, use <gray>/email link <email></gray></white>."
