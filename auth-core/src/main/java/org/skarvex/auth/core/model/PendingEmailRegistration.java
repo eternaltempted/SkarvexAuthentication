@@ -1,4 +1,4 @@
 package org.skarvex.auth.core.model;
 
-public interface PendingEmailRegistration {
+public record PendingEmailRegistration(String email, String code) {
 }

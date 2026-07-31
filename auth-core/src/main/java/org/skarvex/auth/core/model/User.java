@@ -6,5 +6,7 @@ public record User(UUID id,
                    String passwordHash,
                    String registrationIp,
                    String lastLoginIp,
-                   boolean autoLogin) {
+                   boolean autoLogin,
+                   String email,
+                   boolean isEmailVerified) {
 }
