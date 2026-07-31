@@ -2,12 +2,12 @@ package org.skarvex.auth.velocity.database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.flywaydb.core.Flyway;
 import org.skarvex.auth.velocity.manager.ConfigurationManager;
 import org.slf4j.Logger;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 public class DatabaseManager {
 
@@ -33,25 +33,14 @@ public class DatabaseManager {
 
         this.dataSource = new HikariDataSource(hikari);
 
-        try (
-                Connection connection = getConnection();
-                Statement statement = connection.createStatement()
-        ) {
-            statement.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    uuid VARCHAR(36) PRIMARY KEY,
-                    password_hash VARCHAR(255) NOT NULL,
-                    registration_ip VARCHAR(255) NOT NULL,
-                    last_login_ip VARCHAR(255) NOT NULL,
-                    auto_login BOOLEAN NOT NULL DEFAULT TRUE
-                    email VARCHAR(255) DEFAULT NULL,
-                    is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
-                    UNIQUE KEY uk_email (email)
-                )
-            """);
+        try {
+            Flyway flyway = Flyway.configure(getClass().getClassLoader())
+                    .dataSource(this.dataSource).baselineOnMigrate(true)
+                    .load();
 
-            logger.info("[HikariCP] Database connected");
-        } catch (SQLException e) {
+            flyway.migrate();
+            logger.info("[Flyway] Database migrations applied successfully!");
+        } catch (Exception e) {
             throw new RuntimeException("Failed to initialize database: ", e);
         }
     }
