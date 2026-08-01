@@ -25,11 +25,10 @@ java {
 }
 
 tasks {
-    shadowJar {
+    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
         archiveBaseName.set("SkarvexAuth-Proxy")
         archiveVersion.set(project.version.toString())
         archiveClassifier.set("")
-        mergeServiceFiles()
     }
 
     build {

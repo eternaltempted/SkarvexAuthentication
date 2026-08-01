@@ -18,7 +18,7 @@ java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
 
-tasks.shadowJar {
+tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
     archiveBaseName.set("SkarvexAuth-Paper")
     archiveVersion.set(project.version.toString())
     archiveClassifier.set("")
