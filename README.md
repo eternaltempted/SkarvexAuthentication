@@ -1,25 +1,23 @@
 # SkarvexAuthentication 
 
-Skarvex is a lightweight authentication system for Minecraft networks running on Velocity and Paper.
+![Velocity](https://img.shields.io/badge/Velocity-3.3.0-blue?style=flat-square&logo=velocity)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v1.1.0-brightgreen?style=flat-square)
+
+Skarvex is an authentication system for Minecraft networks running on Velocity and Paper.
 
 The project is split into multiple modules, such as:
-- **auth-core** - contains shared business logic and interfaces
-- **auth-velocity** - contains authentication proxy plugin with command and database integration (MySQL only)
+- **auth-core** - contains shared business logic, JDBC implementations and interfaces
+- **auth-velocity** - contains authentication proxy plugin with commands and database integration (including Flyway migrations)
 - **auth-paper** - contains gameplay restrictions before authentication (world protection, lobby location, and player visibility)
 
-
 ## Features
-- Player registration (/register)
-- Player login (/login)
-- BCrypt password hashing
-- Session management (/logout)
-- Auto-login based on trusted IP
-- Login timeout protection
-- IP-based brute-force protection with Caffeine Caching to reduce database load
-- Password change support (/changepass)
-- MySQL storage and HikariCP as a connection pooling
+- **Authentication System:** Full support for player registration, login, session management, and logout (`/register`, `/login`, `/logout`).
+- **Email Integration:** Complete email binding flow (`/email link`, `info`, `confirm`, `unlink`) with full SMTP support with customizable text templates.
+- **Security & Protection:** BCrypt password hashing for secure credentials storage, IP brute-force protection powered by Caffeine Cache, seamless re-authentication for players logging in from recognized IP addresses.
+- **Management & Storage:** In-game password changing functionality (`/changepass`) with high-performance MySQL storage integrated with HikariCP connection pooling, including automatic and safe database schema evolution provided by Flyway migrations.
 
-## Screenshots
+## Previews
 
 <table>
   <tr>
@@ -50,6 +48,18 @@ The project is split into multiple modules, such as:
       </a>
     </td>
   </tr>
+<td align="center">
+      <b>Email Binding & Verification</b><br>
+      <a href="docs/email_link_skarvex.gif">
+        <img src="docs/email_link_skarvex.gif" width="450">
+      </a>
+    </td>
+    <td align="center">
+      <b>Email Unlinking</b><br>
+      <a href="docs/email_unlink_skarvex.gif">
+        <img src="docs/email_unlink_skarvex.gif" width="450">
+      </a>
+    </td>
 </table>
 
 ## Structure
@@ -63,8 +73,9 @@ auth-core
 └─ models 
 
 auth-velocity 
-├─ commands 
-├─ listeners 
+├─ commands
+├─ utils 
+├─ managers
 ├─ database 
 └─ schedulers 
 
@@ -76,16 +87,16 @@ auth-paper
 
 ## Commands
 
-- **/register [password]** - Register a new account
-- **/login [password]** - Login to the server
-- **/logout** - Revoke trusted session
-- **/changepass [old] [new]** - Change the password
-
-## Security
-[//]: # (- OUT OF ORDER!!!!! Login attempts are limited and can be configured in config.yml. )
-- Temporary IP blocking after too many failed attempts (600 seconds/10 minutes default).
-- Sessions are stored in memory and cleared on disconnect.
-- Passwords are hashed using BCrypt.
+| Command | Usage | Description |
+| :--- | :--- | :--- |
+| `/register` | `/register <password> <confirmPassword>` | Register a new account |
+| `/login` | `/login <password>` | Log in to your account |
+| `/logout` | `/logout` | Terminate current session |
+| `/changepass` | `/changepass <oldPassword> <newPassword>` | Change your account password |
+| `/email link` | `/email link <address>` | Send confirmation code to email |
+| `/email confirm` | `/email confirm <code>` | Verify code and bind email |
+| `/email unlink` | `/email unlink` | Unbind current email from account |
+| `/email info` | `/email info` | View linked email status |
 
 ## Requirements
 
@@ -93,6 +104,25 @@ auth-paper
 - Velocity 3.x (and higher)
 - Paper 1.20+
 - MySQL
+
+## Configuration
+1. Run the proxy and backend server once to generate the configuration files.
+2. Open `plugins/SkarvexAuthentication/config.yml` on Velocity and configure your MySQL database and SMTP server:
+
+```yaml
+# Database Connection
+database:
+  url: "jdbc:mysql://localhost:3306/skarvex_auth"
+  username: "root"
+  password: "your_password"
+
+# SMTP Mail Connection
+smtp:
+  host: "smtp.gmail.com"
+  port: 587
+  username: "your-email@gmail.com"
+  password: "app-password" # Use App Passwords for Gmail/Outlook
+```
 
 ## Building
 
