@@ -144,9 +144,9 @@ You are free to use, modify, distribute, and contribute to the project in accord
 
 ## Author
 
-Developed and maintained by nobodyinvited.
+Developed and maintained by eternaltempted.
 
-GitHub: https://github.com/nobodyinvited
+GitHub: https://github.com/eternaltempted
 
 ## Contributing
 
