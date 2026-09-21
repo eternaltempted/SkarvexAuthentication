@@ -3,22 +3,16 @@ package org.skarvex.auth.core.service;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
-import org.skarvex.auth.core.model.EmailBindResult;
-import org.skarvex.auth.core.model.EmailStatus;
 import org.skarvex.auth.core.model.EmailTemplate;
 import org.skarvex.auth.core.model.SmtpConfig;
+import org.skarvex.auth.core.result.EmailBindResult;
 
-import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class EmailService {
 
     private final SmtpConfig config;
     private final Session session;
-
-    private final Map<UUID, EmailStatus> pendingEmails = new ConcurrentHashMap<>();
 
     public EmailService(SmtpConfig config) {
         this.config = config;
@@ -57,28 +51,8 @@ public class EmailService {
         sendEmail(template, null);
     }
 
-    public EmailBindResult sendConfirmationCode(UUID uuid, String code, EmailTemplate template) {
-        EmailStatus status = pendingEmails.getOrDefault(uuid, EmailStatus.IDLE);
-
-        if (status == EmailStatus.AWAITING_CONFIRMATION) {
-            return EmailBindResult.AWAITING_CONFIRMATION;
-        }
-
-        try {
-            pendingEmails.put(uuid, EmailStatus.AWAITING_CONFIRMATION);
-            sendEmail(template, code);
-            return EmailBindResult.SUCCESS;
-        } catch (Exception e) {
-            pendingEmails.remove(uuid);
-            throw e;
-        }
-    }
-
-    public void confirmEmail(UUID uuid) {
-        pendingEmails.remove(uuid);
-    }
-
-    public void clearPendingStatus(UUID uuid) {
-        pendingEmails.remove(uuid);
+    public EmailBindResult sendConfirmationCode(String code, EmailTemplate template) {
+        sendEmail(template, code);
+        return EmailBindResult.SUCCESS;
     }
 }

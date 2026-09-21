@@ -2,8 +2,7 @@ package org.skarvex.auth.velocity.commands;
 
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
-import org.skarvex.auth.core.model.EmailBindResult;
-import org.skarvex.auth.core.model.EmailStatus;
+import org.skarvex.auth.core.result.EmailBindResult;
 import org.skarvex.auth.core.service.AuthService;
 import org.skarvex.auth.velocity.manager.ConfigurationManager;
 import org.skarvex.auth.velocity.manager.TemplateManager;

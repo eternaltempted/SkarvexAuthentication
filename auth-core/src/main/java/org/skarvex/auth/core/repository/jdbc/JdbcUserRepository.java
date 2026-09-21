@@ -122,7 +122,7 @@ public class JdbcUserRepository implements UserRepository {
     }
 
     @Override
-    public void updateEmail(UUID uuid, String email) {
+    public boolean updateEmail(UUID uuid, String email) {
         boolean isVerified = (email != null && !email.isBlank());
         String sql = "UPDATE users SET email = ?, is_email_verified = ? WHERE uuid = ?";
 
@@ -133,7 +133,7 @@ public class JdbcUserRepository implements UserRepository {
             statement.setBoolean(2, isVerified);
             statement.setString(3, uuid.toString());
 
-            statement.executeUpdate();
+            return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update email for user: " + uuid, e);
         }

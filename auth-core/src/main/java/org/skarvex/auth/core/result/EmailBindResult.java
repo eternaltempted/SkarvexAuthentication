@@ -1,4 +1,4 @@
-package org.skarvex.auth.core.model;
+package org.skarvex.auth.core.result;
 
 public enum EmailBindResult {
     SUCCESS,
@@ -6,5 +6,6 @@ public enum EmailBindResult {
     NO_PENDING_REQUEST,
     ALREADY_BOUND,
     AWAITING_CONFIRMATION,
-    NOT_BOUND
+    NOT_BOUND,
+    IDLE
 }

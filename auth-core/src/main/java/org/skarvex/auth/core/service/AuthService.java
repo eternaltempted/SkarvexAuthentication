@@ -2,13 +2,14 @@ package org.skarvex.auth.core.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import org.skarvex.auth.core.model.EmailBindResult;
+import org.skarvex.auth.core.result.EmailBindResult;
 import org.skarvex.auth.core.model.EmailTemplate;
 import org.skarvex.auth.core.model.PendingEmailRegistration;
 import org.skarvex.auth.core.model.User;
 import org.skarvex.auth.core.repository.UserRepository;
 import org.skarvex.auth.core.security.PasswordHasher;
 
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -106,7 +107,10 @@ public class AuthService {
                 .filter(user -> {
                     boolean trustedSession = incomingIp.equals(user.lastLoginIp());
 
-                    if (!trustedSession) userRepository.setAutoLogin(uuid, false);
+                    if (!trustedSession) {
+                        userRepository.setAutoLogin(uuid, false);
+                    }
+
                     return trustedSession;
                 }).map(user -> {
                     sessionService.login(uuid);
@@ -123,42 +127,46 @@ public class AuthService {
     public EmailBindResult requestEmailBinding(UUID uuid, String email, EmailTemplate template) {
         Optional<User> user = userRepository.findById(uuid);
 
-        if (user.isPresent() && user.get().isEmailVerified()) return EmailBindResult.ALREADY_BOUND;
-        if (pendingEmailCache.getIfPresent(uuid) != null) return EmailBindResult.AWAITING_CONFIRMATION;
-        if (userRepository.isEmailLinked(email)) return EmailBindResult.ALREADY_BOUND;
+        if (user.map(User::isEmailVerified).orElse(false)) {
+            return EmailBindResult.ALREADY_BOUND;
+        }
 
         String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000));
-        pendingEmailCache.put(uuid, new PendingEmailRegistration(email, code));
 
-        emailService.sendConfirmationCode(uuid, code, template);
-        return EmailBindResult.SUCCESS;
+        if (pendingEmailCache.asMap().putIfAbsent(uuid, new PendingEmailRegistration(email, code)) != null) {
+            return EmailBindResult.AWAITING_CONFIRMATION;
+        }
+
+        return emailService.sendConfirmationCode(code, template);
     }
+
     public EmailBindResult confirmEmailBinding(UUID uuid, String code) {
-        if (code == null) return EmailBindResult.INVALID_CODE;
-
-        PendingEmailRegistration pending = pendingEmailCache.getIfPresent(uuid);
-        if (pending == null) return EmailBindResult.NO_PENDING_REQUEST;
-
-        if (!pending.code().trim().equals(code)) {
+        if (code == null) {
             return EmailBindResult.INVALID_CODE;
         }
 
-        userRepository.updateEmail(uuid, pending.email());
-        pendingEmailCache.invalidate(uuid);
-        emailService.confirmEmail(uuid);
+        PendingEmailRegistration pendingRequest = pendingEmailCache.getIfPresent(uuid);
 
+        if (pendingRequest == null) {
+            return EmailBindResult.NO_PENDING_REQUEST;
+        }
+
+        if (!pendingRequest.code().equals(code)) {
+            return EmailBindResult.INVALID_CODE;
+        }
+
+        userRepository.updateEmail(uuid, pendingRequest.email());
         return EmailBindResult.SUCCESS;
     }
+
     public EmailBindResult unbindEmail(UUID uuid) {
         Optional<User> userOpt = userRepository.findById(uuid);
 
-        if (userOpt.isEmpty() || userOpt.get().email() == null || userOpt.get().email().isBlank()) {
+        if (!userOpt.map(User::isEmailVerified).orElse(false)) {
             return EmailBindResult.NOT_BOUND;
         }
 
         userRepository.updateEmail(uuid, null);
-        emailService.clearPendingStatus(uuid);
-
         return EmailBindResult.SUCCESS;
     }
 }
