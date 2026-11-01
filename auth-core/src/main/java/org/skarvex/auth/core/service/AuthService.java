@@ -6,7 +6,7 @@ import org.skarvex.auth.core.model.EmailBindResult;
 import org.skarvex.auth.core.model.EmailTemplate;
 import org.skarvex.auth.core.model.PendingEmailRegistration;
 import org.skarvex.auth.core.model.User;
-import org.skarvex.auth.core.repository.UserRepository;
+import org.skarvex.auth.core.database.repository.UserRepository;
 import org.skarvex.auth.core.security.PasswordHasher;
 
 import java.time.Duration;

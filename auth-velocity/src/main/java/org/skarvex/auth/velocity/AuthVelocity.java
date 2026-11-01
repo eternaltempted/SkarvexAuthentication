@@ -12,17 +12,15 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import org.skarvex.auth.core.database.DatabaseManager;
 import org.skarvex.auth.core.model.SmtpConfig;
-import org.skarvex.auth.core.repository.RestrictedIpRepository;
-import org.skarvex.auth.core.repository.UserRepository;
+import org.skarvex.auth.core.database.repository.RestrictedIpRepository;
+import org.skarvex.auth.core.database.repository.UserRepository;
 import org.skarvex.auth.core.security.BCryptPasswordHasher;
 import org.skarvex.auth.core.security.PasswordHasher;
 import org.skarvex.auth.core.service.*;
 import org.skarvex.auth.core.util.TimeUtil;
 import org.skarvex.auth.velocity.commands.*;
-import org.skarvex.auth.velocity.database.DatabaseManager;
-import org.skarvex.auth.core.repository.jdbc.JdbcRestrictedIpRepository;
-import org.skarvex.auth.core.repository.jdbc.JdbcUserRepository;
 import org.skarvex.auth.velocity.manager.ConfigurationManager;
 import org.skarvex.auth.velocity.manager.TemplateManager;
 import org.skarvex.auth.velocity.scheduler.LoginReminderScheduler;
@@ -40,7 +38,7 @@ import java.util.concurrent.Executors;
 @Plugin(
         id = "skarvexauthentication",
         name = "SkarvexAuthentication",
-        version = "1.2.0"
+        version = "1.3.0"
 )
 public class AuthVelocity {
 
@@ -59,9 +57,9 @@ public class AuthVelocity {
     private PasswordHasher hasher;
     private UserRepository users;
     private RestrictedIpRepository restrictedIps;
-    private DatabaseManager database;
     private AuthService authService;
     private EmailService emailService;
+    private DatabaseManager db;
 
     private LoginTimeoutService loginTimeoutService;
     private BruteForceService bruteForceService;
@@ -153,8 +151,8 @@ public class AuthVelocity {
             asyncExecutor.shutdown();
         }
 
-        if (database != null) {
-            database.disconnect();
+        if (db != null && db.isConnected()) {
+            db.disconnect();
         }
     }
 
@@ -177,19 +175,13 @@ public class AuthVelocity {
     }
 
     private void setupDatabase() {
-        this.database = new DatabaseManager(
-                config,
-                logger
-        );
-
-        database.connect();
+        db = new DatabaseManager(config, logger);
+        db.connect();
     }
 
     private void setupServices() {
         this.sessions = new SessionService();
         this.hasher = new BCryptPasswordHasher();
-        this.users = new JdbcUserRepository(database.getDataSource());
-        this.restrictedIps = new JdbcRestrictedIpRepository(database.getDataSource());
         this.loginTimeoutService = new LoginTimeoutService();
         this.emailService = new EmailService(new SmtpConfig(
                 config.getString("smtp.host"),

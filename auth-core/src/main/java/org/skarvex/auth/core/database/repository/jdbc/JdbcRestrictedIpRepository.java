@@ -1,7 +1,7 @@
-package org.skarvex.auth.core.repository.jdbc;
+package org.skarvex.auth.core.database.repository.jdbc;
 
 import org.skarvex.auth.core.model.RestrictedIp;
-import org.skarvex.auth.core.repository.RestrictedIpRepository;
+import org.skarvex.auth.core.database.repository.RestrictedIpRepository;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -53,15 +53,15 @@ public class JdbcRestrictedIpRepository implements RestrictedIpRepository {
     }
 
     @Override
-    public void unblock(String ip) {
+    public boolean unblock(String ip) {
         String sql = "DELETE FROM restricted_ips WHERE ip = ?";
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, ip);
-            statement.executeUpdate();
 
+            return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

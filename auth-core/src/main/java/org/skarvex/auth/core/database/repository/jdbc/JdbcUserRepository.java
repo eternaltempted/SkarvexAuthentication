@@ -1,7 +1,7 @@
-package org.skarvex.auth.core.repository.jdbc;
+package org.skarvex.auth.core.database.repository.jdbc;
 
 import org.skarvex.auth.core.model.User;
-import org.skarvex.auth.core.repository.UserRepository;
+import org.skarvex.auth.core.database.repository.UserRepository;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -46,7 +46,7 @@ public class JdbcUserRepository implements UserRepository {
             );
 
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to find user: " + uuid, e);
         }
     }
 
@@ -66,7 +66,7 @@ public class JdbcUserRepository implements UserRepository {
             statement.executeUpdate();
 
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to save user: " + user.id().toString(), e);
         }
     }
 
@@ -82,7 +82,7 @@ public class JdbcUserRepository implements UserRepository {
 
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to update password for user: " + uuid, e);
         }
     }
 
@@ -99,12 +99,12 @@ public class JdbcUserRepository implements UserRepository {
 
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to update last login ip for user: " + uuid, e);
         }
     }
 
     @Override
-    public void setAutoLogin(UUID uuid, boolean isAutoLogged) {
+    public boolean setAutoLogin(UUID uuid, boolean isAutoLogged) {
 
         String sql = "UPDATE users SET auto_login = ? WHERE uuid = ?";
 
@@ -114,15 +114,14 @@ public class JdbcUserRepository implements UserRepository {
             statement.setBoolean(1, isAutoLogged);
             statement.setString(2, uuid.toString());
 
-            statement.executeUpdate();
-
+            return statement.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to update auto-login for user " + uuid, e);
         }
     }
 
     @Override
-    public void updateEmail(UUID uuid, String email) {
+    public boolean updateEmail(UUID uuid, String email) {
         boolean isVerified = (email != null && !email.isBlank());
         String sql = "UPDATE users SET email = ?, is_email_verified = ? WHERE uuid = ?";
 
@@ -133,7 +132,7 @@ public class JdbcUserRepository implements UserRepository {
             statement.setBoolean(2, isVerified);
             statement.setString(3, uuid.toString());
 
-            statement.executeUpdate();
+            return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update email for user: " + uuid, e);
         }

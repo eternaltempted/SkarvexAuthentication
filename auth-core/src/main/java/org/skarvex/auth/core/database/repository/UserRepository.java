@@ -1,8 +1,7 @@
-package org.skarvex.auth.core.repository;
+package org.skarvex.auth.core.database.repository;
 
 import org.skarvex.auth.core.model.User;
 
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,9 +15,9 @@ public interface UserRepository {
 
     boolean updateLastLoginIp(UUID uuid, String ip);
 
-    void setAutoLogin(UUID uuid, boolean enabled);
+    boolean setAutoLogin(UUID uuid, boolean enabled);
 
-    void updateEmail(UUID uuid, String email);
+    boolean updateEmail(UUID uuid, String email);
 
     boolean isEmailLinked(String email);
 
