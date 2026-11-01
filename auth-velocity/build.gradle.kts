@@ -15,6 +15,7 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.2")
     implementation("com.mysql:mysql-connector-j:9.3.0")
     implementation("com.zaxxer:HikariCP:6.3.0")
+    implementation("org.mongodb:mongodb-driver-sync:5.5.1")
 
     implementation("org.flywaydb:flyway-core:10.10.0")
     implementation("org.flywaydb:flyway-mysql:10.10.0")

@@ -1,5 +1,6 @@
 package org.skarvex.auth.velocity.manager;
 
+import org.skarvex.auth.core.config.ConfigurationProvider;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.InputStream;
@@ -8,7 +9,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ConfigurationManager {
+public class ConfigurationManager implements ConfigurationProvider {
 
     private final Path dataDirectory;
 

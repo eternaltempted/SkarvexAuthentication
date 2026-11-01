@@ -1,9 +1,8 @@
-package org.skarvex.auth.core.repository;
+package org.skarvex.auth.core.database.repository;
 
 import org.skarvex.auth.core.model.RestrictedIp;
 
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 public interface RestrictedIpRepository {
 
@@ -11,5 +10,5 @@ public interface RestrictedIpRepository {
 
     Optional<RestrictedIp> findByIp(String ip);
 
-    void unblock(String ip);
+    boolean unblock(String ip);
 }

@@ -2,7 +2,7 @@
 
 ![Velocity](https://img.shields.io/badge/Velocity-3.3.0-blue?style=flat-square&logo=velocity)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
-![Version](https://img.shields.io/badge/Version-v1.1.0-brightgreen?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v1.3.0-brightgreen?style=flat-square)
 
 Skarvex is an authentication system for Minecraft networks running on Velocity and Paper.
 

@@ -3,7 +3,7 @@ package org.skarvex.auth.core.service;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.skarvex.auth.core.model.RestrictedIp;
-import org.skarvex.auth.core.repository.RestrictedIpRepository;
+import org.skarvex.auth.core.database.repository.RestrictedIpRepository;
 
 import java.time.Duration;
 import java.time.Instant;
