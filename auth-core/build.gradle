@@ -19,6 +19,12 @@ dependencies {
 
     implementation("org.eclipse.angus:jakarta.mail:2.0.3")
     api("org.slf4j:slf4j-api:2.0.17")
+    implementation("com.mysql:mysql-connector-j:9.3.0")
+    implementation("com.zaxxer:HikariCP:6.3.0")
+    implementation("org.mongodb:mongodb-driver-sync:5.5.1")
+
+    implementation("org.flywaydb:flyway-core:10.10.0")
+    implementation("org.flywaydb:flyway-mysql:10.10.0")
 }
 
 test {
