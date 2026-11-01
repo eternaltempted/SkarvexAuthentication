@@ -1,4 +1,6 @@
-# SkarvexAuthentication 
+<img src="docs/assets/skarvex_logo.png" width="800">
+
+#
 
 ![Velocity](https://img.shields.io/badge/Velocity-3.3.0-blue?style=flat-square&logo=velocity)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
