@@ -110,7 +110,7 @@ auth-paper
 
 ## Configuration
 1. Run the proxy and backend server once to generate the configuration files.
-2. Open `plugins/SkarvexAuthentication/config.yml` on Velocity and configure your MySQL database and SMTP server:
+2. Open `plugins/SkarvexAuthentication/config.yml` on Velocity and configure your database and SMTP server:
 
 ```yaml
 # Database Connection
